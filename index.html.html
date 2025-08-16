@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Parking Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --primary: #4a6cf7;
+      --primary-light: #eef2ff;
+      --secondary: #5a8dee;
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --light: #f8fafc;
+      --medium: #f1f5f9;
+      --dark: #1e293b;
+      --gray: #64748b;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-border: rgba(0, 0, 0, 0.05);
+      --shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+      --transition: all 0.3s ease;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+      color: var(--dark);
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px 0;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      position: relative;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: white;
+      padding: 15px 25px;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      background: linear-gradient(135deg, #ffffff, #f8fafc);
+      border: 1px solid rgba(74, 108, 247, 0.15);
+    }
+    
+    .logo:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+    
+    .logo h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .logo i {
+      font-size: 2.2rem;
+      color: var(--primary);
+    }
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+    
+    @media (max-width: 992px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      border-radius: 16px;
+      padding: 25px;
+      border: 1px solid var(--card-border);
+      transition: var(--transition);
+      box-shadow: var(--shadow);
+      background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.9));
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .slots-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+    
+    @media (max-width: 768px) {
+      .slots-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .slot-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+    }
+    
+    .slot-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.07);
+    }
+    
+    .slot-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+    }
+    
+    .slot-card.free::before {
+      background: var(--success);
+    }
+    
+    .slot-card.occupied::before {
+      background: var(--danger);
+    }
+    
+    .slot-icon {
+      font-size: 2.3rem;
+      margin-bottom: 15px;
+      transition: transform 0.3s ease;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+    
+    .slot-card:hover .slot-icon {
+      transform: scale(1.1);
+    }
+    
+    .slot-card.free .slot-icon {
+      color: var(--success);
+      background: var(--success-light);
+    }
+    
+    .slot-card.occupied .slot-icon {
+      color: var(--danger);
+      background: var(--danger-light);
+    }
+    
+    /* Car image for occupied slots */
+    .slot-card.occupied .car-image {
+      width: 40px;
+      height: 40px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--danger-light);
+    }
+    
+    .slot-card.occupied .car-image img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+    
+    .slot-info {
+      text-align: center;
+    }
+    
+    .slot-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--dark);
+    }
+    
+    .slot-status {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    
+    .slot-card.free .slot-status {
+      background: var(--success-light);
+      color: var(--success);
+    }
+    
+    .slot-card.occupied .slot-status {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+    
+    .slot-time {
+      font-size: 0.8rem;
+      color: var(--gray);
+      margin-top: 10px;
+    }
+    
+    .stats-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 25px;
+    }
+    
+    @media (max-width: 480px) {
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+      transition: var(--transition);
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.07);
+    }
+    
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 15px 0;
+    }
+    
+    .stat-free .stat-value {
+      color: var(--success);
+    }
+    
+    .stat-occupied .stat-value {
+      color: var(--danger);
+    }
+    
+    .stat-label {
+      font-size: 0.95rem;
+      color: var(--gray);
+    }
+    
+    .chart-container {
+      height: 280px;
+      position: relative;
+      margin-top: 20px;
+    }
+    
+    .hardware-section {
+      margin-top: 40px;
+    }
+    
+    .hardware-title {
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--dark);
+    }
+    
+    .hardware-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    
+    .hardware-card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: var(--transition);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+    }
+    
+    .hardware-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    
+    .hardware-icon {
+      font-size: 2.3rem;
+      margin-bottom: 15px;
+      color: var(--primary);
+      background: var(--primary-light);
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: var(--transition);
+    }
+    
+    .hardware-card:hover .hardware-icon {
+      transform: rotate(5deg) scale(1.1);
+    }
+    
+    .hardware-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--dark);
+    }
+    
+    .hardware-desc {
+      font-size: 0.9rem;
+      color: var(--gray);
+      line-height: 1.5;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding: 20px 0;
+      color: var(--gray);
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-top: 1px solid var(--card-border);
+    }
+    
+    .refresh-btn {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid rgba(90, 123, 255, 0.2);
+      padding: 8px 20px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+    }
+    
+    .refresh-btn:hover {
+      background: var(--primary);
+      color: white;
+      transform: scale(1.03);
+    }
+    
+    .system-status {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+    }
+    
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex: 1;
+      transition: var(--transition);
+    }
+    
+    .status-item:hover {
+      transform: translateY(-3px);
+    }
+    
+    .status-icon {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      color: var(--primary);
+      background: var(--primary-light);
+      width: 45px;
+      height: 45px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+    
+    .status-value {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    
+    .status-label {
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 5px;
+    }
+    
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      padding: 15px;
+      border-top: 1px solid var(--card-border);
+      z-index: 100;
+      box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .mobile-nav {
+      display: flex;
+      justify-content: space-around;
+    }
+    
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--dark);
+      padding: 8px;
+      border-radius: 12px;
+      transition: var(--transition);
+    }
+    
+    .nav-item:hover {
+      background: var(--primary-light);
+    }
+    
+    .nav-item i {
+      font-size: 1.2rem;
+      margin-bottom: 5px;
+      color: var(--primary);
+    }
+    
+    @media (max-width: 768px) {
+      .mobile-menu {
+        display: block;
+      }
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+      .refresh-btn {
+        align-self: flex-end;
+      }
+    }
+    
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px 25px;
+      border-radius: 12px;
+      border-left: 4px solid var(--primary);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transform: translateX(150%);
+      transition: transform 0.4s ease;
+      z-index: 1000;
+      border: 1px solid var(--card-border);
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    .notification-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: var(--primary);
+    }
+    
+    @keyframes pulse {
+      0% {
+        opacity: 0.8;
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0.8;
+      }
+    }
+    
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(90, 123, 255, 0.2);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    .connection-status {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+      font-weight: 500;
+      transition: var(--transition);
+      background: white;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+    }
+    
+    .connected {
+      background: var(--success-light);
+      color: var(--success);
+      border: 1px solid rgba(76, 175, 80, 0.2);
+    }
+    
+    .disconnected {
+      background: var(--danger-light);
+      color: var(--danger);
+      border: 1px solid rgba(244, 67, 54, 0.2);
+    }
+    
+    /* Animation for card entrance */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .card {
+      animation: fadeInUp 0.5s ease forwards;
+      opacity: 0;
+    }
+    
+    .card:nth-child(1) {
+      animation-delay: 0.1s;
+    }
+    
+    .card:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .hardware-card {
+      animation: fadeInUp 0.5s ease forwards;
+      opacity: 0;
+    }
+    
+    .hardware-card:nth-child(1) {
+      animation-delay: 0.1s;
+    }
+    
+    .hardware-card:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .hardware-card:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+    
+    .hardware-card:nth-child(4) {
+      animation-delay: 0.4s;
+    }
+    
+    /* Car SVG for occupied slots */
+    .car-svg {
+      width: 32px;
+      height: 32px;
+      fill: var(--danger);
+    }
+    
+    .health-bar {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    
+    .health-progress {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    
+    .health-100 { background: var(--success); width: 100%; }
+    .health-98 { background: var(--success); width: 98%; }
+    .health-95 { background: var(--warning); width: 95%; }
+    .health-90 { background: var(--warning); width: 90%; }
+    .health-85 { background: var(--danger); width: 85%; }
+    
+    /* Header background effect */
+    .header-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      background: linear-gradient(135deg, var(--primary), #3b4fe8);
+      clip-path: polygon(0 0, 100% 0, 100% 60%, 0 100%);
+      z-index: -1;
+    }
+    
+    /* Stats highlight */
+    .stats-highlight {
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border-radius: 16px;
+      padding: 25px;
+      margin-top: 30px;
+      text-align: center;
+      border: 1px solid rgba(59, 130, 246, 0.15);
+    }
+    
+    .stats-highlight h3 {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .stats-highlight-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 10px 0;
+    }
+    
+    .stats-highlight-label {
+      color: var(--gray);
+      font-size: 0.95rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .system-status {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .header-bg {
+        height: 250px;
+        clip-path: polygon(0 0, 100% 0, 100% 70%, 0 100%);
+      }
+      
+      .stats-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* New status indicator */
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      background: var(--gray);
+      animation: pulse 1.5s infinite;
+    }
+    
+    .connection-status.connected .status-dot {
+      background: var(--success);
+      animation: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-bg"></div>
+  
+  <div class="notification" id="notification">
+    <div class="notification-title">Database Update</div>
+    <div>Parking slot status has been updated</div>
+  </div>
+  
+  <div class="container">
+    <header>
+      <div class="logo">
+        <i class="fas fa-parking"></i>
+        <h1>Smart Parking Dashboard</h1>
+      </div>
+    </header>
+    
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-map-marker-alt"></i> Parking Slots</h2>
+          <button class="refresh-btn" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
+        </div>
+        <div class="slots-container" id="slotsContainer">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <div>Connecting to database...</div>
+          </div>
+        </div>
+        
+        <div class="connection-status" id="connectionStatus">
+          <span class="status-dot"></span> Establishing connection...
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-chart-pie"></i> Occupancy Statistics</h2>
+        </div>
+        <div class="chart-container">
+          <canvas id="occupancyChart"></canvas>
+        </div>
+        
+        <div class="stats-container">
+          <div class="stat-card stat-free">
+            <i class="fas fa-check-circle"></i>
+            <div class="stat-value" id="freeSlots">0</div>
+            <div class="stat-label">Free Slots</div>
+          </div>
+          <div class="stat-card stat-occupied">
+            <i class="fas fa-times-circle"></i>
+            <div class="stat-value" id="occupiedSlots">0</div>
+            <div class="stat-label">Occupied Slots</div>
+          </div>
+        </div>
+        
+        <div class="system-status">
+          <div class="status-item">
+            <i class="fas fa-car status-icon"></i>
+            <div class="status-value" id="totalVehicles">0</div>
+            <div class="status-label">Total Vehicles</div>
+          </div>
+          <div class="status-item">
+            <i class="fas fa-clock status-icon"></i>
+            <div class="status-value" id="lastUpdate">Just now</div>
+            <div class="status-label">Last Update</div>
+          </div>
+          <div class="status-item">
+            <i class="fas fa-server status-icon"></i>
+            <div class="status-value" id="sensorHealth">100%</div>
+            <div class="health-bar">
+              <div class="health-progress health-100" id="healthBar"></div>
+            </div>
+            <div class="status-label">System Health</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stats-highlight">
+      <h3><i class="fas fa-chart-line"></i> Current Occupancy Rate</h3>
+      <div class="stats-highlight-value" id="occupancyRate">0%</div>
+      <div class="stats-highlight-label">Percentage of occupied parking slots</div>
+    </div>
+    
+    <div class="hardware-section">
+      <h2 class="hardware-title"><i class="fas fa-microchip"></i> System Architecture</h2>
+      <div class="hardware-grid">
+        <div class="hardware-card">
+          <i class="fas fa-database hardware-icon"></i>
+          <div class="hardware-name">Realtime Database</div>
+          <div class="hardware-desc">Live data storage and synchronization</div>
+        </div>
+        <div class="hardware-card">
+          <i class="fas fa-server hardware-icon"></i>
+          <div class="hardware-name">Web Dashboard</div>
+          <div class="hardware-desc">Real-time visualization of parking status</div>
+        </div>
+        <div class="hardware-card">
+          <!-- Updated sensor icon -->
+          <i class="fas fa-satellite-dish hardware-icon"></i>
+          <div class="hardware-name">IR Sensors</div>
+          <div class="hardware-desc">Vehicle detection at each parking slot</div>
+        </div>
+        <div class="hardware-card">
+          <i class="fas fa-shield-alt hardware-icon"></i>
+          <div class="hardware-name">Security</div>
+          <div class="hardware-desc">Encrypted data transmission</div>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <p>Smart Parking System &copy; 2023 | Real-time Monitoring Dashboard</p>
+    </footer>
+  </div>
+  
+  <div class="mobile-menu">
+    <div class="mobile-nav">
+      <div class="nav-item">
+        <i class="fas fa-home"></i>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item">
+        <i class="fas fa-car"></i>
+        <span>Parking</span>
+      </div>
+      <div class="nav-item">
+        <i class="fas fa-chart-pie"></i>
+        <span>Analytics</span>
+      </div>
+      <div class="nav-item">
+        <i class="fas fa-cog"></i>
+        <span>Settings</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SVG for car icon (hidden, we'll use it in JavaScript) -->
+  <svg style="display: none;">
+    <symbol id="car-icon" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z"/>
+      <circle fill="currentColor" cx="7.5" cy="14.5" r="1.5"/>
+      <circle fill="currentColor" cx="16.5" cy="14.5" r="1.5"/>
+    </symbol>
+  </svg>
+
+  <script>
+    // Firebase configuration with your credentials
+    const firebaseConfig = {
+      apiKey: "AIzaSyDnjwxWkgKzvcFgfNFBXP1TipHQ0gpcINk",
+      authDomain: "smart-car-parking-system-61a3e.firebaseapp.com",
+      databaseURL: "https://smart-car-parking-system-61a3e-default-rtdb.firebaseio.com",
+      projectId: "smart-car-parking-system-61a3e",
+      storageBucket: "smart-car-parking-system-61a3e.appspot.com",
+      messagingSenderId: "1055274434539",
+      appId: "1:1055274434539:web:5b5e7d2cbd8d2f1f7f9c3f"
+    };
+    
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(app);
+    
+    // Initialize Chart.js
+    const ctx = document.getElementById('occupancyChart').getContext('2d');
+    const occupancyChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Free Slots', 'Occupied Slots'],
+        datasets: [{
+          data: [0, 0],
+          backgroundColor: [ '#10b981', '#ef4444' ],
+          borderWidth: 0,
+          hoverOffset: 15,
+          borderColor: 'transparent'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: '#333',
+              font: {
+                size: 13
+              },
+              padding: 20
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#333',
+            bodyColor: '#333',
+            padding: 12,
+            cornerRadius: 6,
+            borderColor: 'rgba(0, 0, 0, 0.05)',
+            borderWidth: 1
+          },
+          datalabels: {
+            formatter: (value, ctx) => {
+              let sum = 0;
+              let dataArr = ctx.chart.data.datasets[0].data;
+              dataArr.map(data => {
+                sum += data;
+              });
+              let percentage = (value*100 / sum).toFixed(0)+"%";
+              return percentage;
+            },
+            color: '#fff',
+          }
+        },
+        cutout: '70%'
+      }
+    });
+    
+    // Show notification
+    function showNotification() {
+      const notification = document.getElementById('notification');
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+    
+    // Calculate system health based on sensor status
+    function calculateSystemHealth() {
+      // For demonstration, we'll randomly set health between 95-100%
+      const health = 95 + Math.floor(Math.random() * 6);
+      document.getElementById('sensorHealth').textContent = `${health}%`;
+      
+      // Update health bar
+      const healthBar = document.getElementById('healthBar');
+      healthBar.className = 'health-progress';
+      healthBar.classList.add(`health-${health}`);
+    }
+    
+    // Render slots based on Firebase data
+    function renderSlots(slotsData) {
+      const slotsContainer = document.getElementById('slotsContainer');
+      
+      // Clear loading state
+      slotsContainer.innerHTML = '';
+      
+      let freeCount = 0;
+      let occupiedCount = 0;
+      
+      // Create slot cards for each slot in Firebase
+      for (const [slotId, status] of Object.entries(slotsData)) {
+        const slotCard = document.createElement('div');
+        const slotStatus = status === "available" ? "free" : "occupied";
+        
+        slotCard.className = `slot-card ${slotStatus}`;
+        
+        // Count statuses
+        if (slotStatus === "free") freeCount++;
+        else occupiedCount++;
+        
+        // Format slot name
+        const slotName = slotId.charAt(0).toUpperCase() + slotId.slice(1);
+        
+        // For occupied slots, show a small car icon
+        const iconHtml = slotStatus === "free" 
+          ? `<i class="fas fa-parking slot-icon"></i>`
+          : `<div class="car-image">
+               <svg class="car-svg">
+                 <use href="#car-icon"></use>
+               </svg>
+             </div>`;
+        
+        slotCard.innerHTML = `
+          ${iconHtml}
+          <div class="slot-info">
+            <div class="slot-name">${slotName}</div>
+            <div class="slot-status">${slotStatus === "free" ? 'AVAILABLE' : 'OCCUPIED'}</div>
+            <div class="slot-time">Updated: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+          </div>
+        `;
+        
+        slotsContainer.appendChild(slotCard);
+      }
+      
+      // Update statistics
+      document.getElementById('freeSlots').textContent = freeCount;
+      document.getElementById('occupiedSlots').textContent = occupiedCount;
+      document.getElementById('totalVehicles').textContent = occupiedCount;
+      
+      // Calculate and display occupancy rate
+      const totalSlots = freeCount + occupiedCount;
+      const occupancyRate = totalSlots > 0 ? Math.round((occupiedCount / totalSlots) * 100) : 0;
+      document.getElementById('occupancyRate').textContent = `${occupancyRate}%`;
+      
+      // Update system health
+      calculateSystemHealth();
+      
+      // Update chart
+      occupancyChart.data.datasets[0].data = [freeCount, occupiedCount];
+      occupancyChart.update();
+      
+      // Update connection status
+      const connectionStatus = document.getElementById('connectionStatus');
+      connectionStatus.className = 'connection-status connected';
+      connectionStatus.innerHTML = `
+        <span class="status-dot"></span> Connection established successfully 
+        <span style="display: block; margin-top: 8px; font-size: 0.9em;">${freeCount} free / ${occupiedCount} occupied</span>
+      `;
+      
+      // Update last update time
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+    
+    // Initialize Firebase connection and data retrieval
+    function initFirebase() {
+      try {
+        // Reference to parking slots in Firebase
+        const slotsRef = database.ref('parking_slots');
+        
+        // Update UI with connection status
+        const connectionStatus = document.getElementById('connectionStatus');
+        connectionStatus.innerHTML = '<span class="status-dot"></span> Establishing connection...';
+        
+        // Listen for value changes
+        slotsRef.on('value', (snapshot) => {
+          const slotsData = snapshot.val();
+          
+          if (slotsData) {
+            renderSlots(slotsData);
+            
+            // Show notification
+            showNotification();
+          }
+        }, (error) => {
+          console.error("Database error: ", error);
+          connectionStatus.className = 'connection-status disconnected';
+          connectionStatus.innerHTML = `<i class="fas fa-exclamation-circle"></i> Error: ${error.message}`;
+        });
+        
+      } catch (error) {
+        console.error("Initialization error: ", error);
+        const connectionStatus = document.getElementById('connectionStatus');
+        connectionStatus.className = 'connection-status disconnected';
+        connectionStatus.innerHTML = `<i class="fas fa-exclamation-circle"></i> Critical Error: ${error.message}`;
+      }
+    }
+    
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set initial last update time
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      // Initialize Firebase connection
+      initFirebase();
+      
+      // Refresh button
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        // Create a visual effect for refreshing
+        const slotCards = document.querySelectorAll('.slot-card');
+        slotCards.forEach(card => {
+          card.style.opacity = '0.7';
+          setTimeout(() => {
+            card.style.opacity = '1';
+          }, 300);
+        });
+        
+        // Force an immediate update
+        database.ref('parking_slots').once('value').then((snapshot) => {
+          const slotsData = snapshot.val();
+          if (slotsData) {
+            renderSlots(slotsData);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
